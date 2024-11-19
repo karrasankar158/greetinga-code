@@ -1,0 +1,131 @@
+//Dcoerfile:
+#Base Image with OpenJDK 21
+FROM openjdk:21-jdk-slim
+
+#Set the Application Directory
+WORKDIR /app
+
+#Copy the Application JAR
+COPY target/welcome-app-0.0.1-SNAPSHOT.jar welcome-app-0.0.1-SNAPSHOT.jar
+
+#Expose Application port
+EXPOSE 8080
+
+#Execute the application
+ENTRYPOINT ["java","-jar","welcome-app-0.0.1-SNAPSHOT.jar"]
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+package com.fsd.controller.service;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+@Service
+@Slf4j
+public class WelcomeServiceImpl {
+
+    private final Map<String,Object> greetingsMap=new LinkedHashMap<>();
+
+    /**
+     * Update the greetings map with input and dynamic data.
+     * @param inputMap
+     * @return updated greetings map
+     */
+    public String sendingGreetings(Map<String,Object> inputMap){
+        //Add entries from input to greetings map
+        inputMap.forEach(greetingsMap::put);
+        log.info("request data processed.");
+
+        //Add current date-time and status, static values
+        String dateAndTime= LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        greetingsMap.put("Date and Time",dateAndTime);
+        greetingsMap.put("status", "success");
+
+        return "Greetings send successfully";
+    }
+
+    /**
+     * Returns the current greetings map.
+     */
+    public Map<String,Object> retrievesGreetings(){
+        log.info("updated greetings.");
+      return greetingsMap;
+    }
+}
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+package com.fsd.controller;
+
+import com.fsd.controller.service.WelcomeServiceImpl;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/greetings")
+@Slf4j
+public class WelcomeController {
+
+
+    @Autowired
+    private WelcomeServiceImpl welcomeServiceImpl;
+
+    /**
+     * Processes and updates the greetings map.
+     * @param inputMap input map sent in the POST request.
+     * @return updated greetings Map
+     */
+    @PostMapping("/send")
+    public ResponseEntity<String> sendingGreetings(@RequestBody Map<String,Object> inputMap){
+        log.info("calling send  end point");
+        String welcomeMessage=welcomeServiceImpl.sendingGreetings(inputMap);
+        return new ResponseEntity<>(welcomeMessage,HttpStatus.CREATED);
+    }
+
+    /**
+     * Retrieves the current greetings map.
+     * @return
+     */
+    @GetMapping("/retrieve")
+    public ResponseEntity<Map<String,Object>> retrieveGreetings(){
+        log.info("calling send  retrieve point");
+        Map<String,Object> greetingsReceived=welcomeServiceImpl.retrievesGreetings();
+        return new ResponseEntity<>(greetingsReceived,HttpStatus.OK);
+    }
+}
+
+
+-----------------------------------------------------------------------------------------------------------------
+
+CURLs:
+
+curl --location 'http://18.117.141.22:8080/api/greetings/send' \
+--header 'Content-Type: application/json' \
+--data '{
+ "welcomeMessage" : "Welcome to our YouTube family!",
+ "thankYouNote"   : "Thnak you for subscribing to our channel!",
+ "channelIntro"   : "Get ready for exciting content and updates every week.",
+ "nextSteps"      : "check ou our latest videos and leave a comment!"
+}'
+
+curl --location --request GET 'http://18.117.141.22:8080/api/greetings/retrieve' \
+--data '{
+ "welcomeMessage" : "Welcome to our YouTube family!",
+ "thankYouNote"   : "Thnak you for subscribing to our channel!",
+ "channelIntro"   : "Get ready for exciting content and updates every week.",
+ "nextSteps"      : "check ou our latest videos and leave a comment!"
+}'
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------
